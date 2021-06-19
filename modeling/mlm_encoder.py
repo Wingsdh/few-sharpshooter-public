@@ -192,10 +192,10 @@ class MlmBertEncoder(BaseEncoder):
     def get_prob(self, text, mask_ind_list):
         text = text[-self.max_len + 2:]
         token_ids, segment_ids = self.tokenizer.encode(text, maxlen=self.max_len)
-        for mask_ind in mask_ind_list:
-            token_ids[mask_ind] = self.tokenizer._token_mask_id
         token_ids = token_ids[1:-1]
         segment_ids = segment_ids[1:-1]
+        for mask_ind in mask_ind_list:
+            token_ids[mask_ind] = self.tokenizer._token_mask_id
         token_ids, segment_ids = to_array([token_ids], [segment_ids])
 
         # 用mlm模型预测被mask掉的部分
