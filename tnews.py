@@ -66,6 +66,7 @@ def get_data_fp(use_index):
 def main():
     # 参数
 
+    # 加载数据
     train_fp, dev_fp, my_test_fp, test_fp = get_data_fp(0)
     key_label = 'label_desc'
     key_sentence = 'sentence'
@@ -90,9 +91,14 @@ def main():
         rst = eval_model(classifier, [dev_fp], key_sentence, key_label)
         print(f'{train_fp} + {dev_fp} -> {rst}')
 
+    # 加载最终模型
     classifier = RetrieverClassifier(encoder, data, n_top=3)
+
+    # 自测试集测试
     rst = eval_model(classifier, my_test_fp, key_sentence, key_label)
     print(f'{train_fp} + {dev_fp} -> {rst}')
+
+    # 官方测试集
     test_data = load_test_data(test_fp)
     test_data = infer(test_data, classifier)
     dump_result('tnewsf_predict.json', test_data)
