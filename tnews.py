@@ -87,12 +87,12 @@ def main():
         # 加载分类器
         classifier = RetrieverClassifier(encoder, data, n_top=7)
 
-        print('Evel model')
+        print('Eval model')
         rst = eval_model(classifier, [dev_fp], key_sentence, key_label)
         print(f'{train_fp} + {dev_fp} -> {rst}')
 
     # 加载最终模型
-    classifier = RetrieverClassifier(encoder, data, n_top=3)
+    classifier = RetrieverClassifier(encoder, data, n_top=7)
 
     # 自测试集测试
     rst = eval_model(classifier, my_test_fp, key_sentence, key_label)
