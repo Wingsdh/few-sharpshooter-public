@@ -17,7 +17,7 @@ import numpy as np
 from annoy import AnnoyIndex
 
 from modeling.base_encoder import BaseEncoder
-from modeling.classifier import LabelData, PairLabelData
+from modeling.classifier import LabelData
 from modeling.classifier import BaseClassifier
 
 
@@ -33,13 +33,14 @@ class SentenceRetriever(object):
     def __init__(self, encoder: BaseEncoder, matrix, data, dim=None):
         self.encoder = encoder
         self.data = data
+        self.text_2_position = {t.text: i for i, t in enumerate(self.data)}
         self.matrix = matrix
         if dim is None:
             dim = self.encoder.dim
 
         self.annoy_index = self.build_annoy_index(self.matrix, dim)
 
-    def retrieve(self, text, vec=None, n_top=9):
+    def retrieve(self, text=None, vec=None, n_top=9):
         # 向量检索
         if vec is None:
             vec = self.encoder.encode(text)
@@ -97,7 +98,7 @@ class PairSentenceRetriever(object):
 
 
 class PairRetrieverClassifier(object):
-    def __init__(self, encoder, train_data: List[PairLabelData], n_top=7):
+    def __init__(self, encoder, train_data, n_top=7):
         # 加载分类器
         matrix = [encoder.encode(t.text0, t.text1) for t in train_data]
         self.retriever = PairSentenceRetriever(encoder, matrix, train_data)

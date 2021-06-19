@@ -22,16 +22,6 @@ class LabelData(object):
         return f'{self.label}: {self.text}'
 
 
-class PairLabelData(object):
-    def __init__(self, text0, text1, label):
-        self.text0 = text0
-        self.text1 = text1
-        self.label = label
-
-    def __repr__(self):
-        return f'{self.label}: {self.text}'
-
-
 class BaseClassifier(ABC):
 
     @abstractmethod
