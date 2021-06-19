@@ -164,8 +164,10 @@ class MlmBertEncoder(BaseEncoder):
     CONCAT = 'concat'
     MEAN = 'mean'
 
-    def __init__(self, model_path, train_data, dev_data, prefix, mask_idxes, labels, batch_size, merge=CONCAT,
+    def __init__(self, model_path, weight_path, train_data, dev_data, prefix, mask_idxes, labels, batch_size,
+                 merge=CONCAT,
                  max_len=256):
+        self.weight_path = weight_path
         self.train_data = train_data
         self.dev_data = dev_data
         self.model, self.train_model, self.tokenizer = init_bert(model_path)
@@ -188,6 +190,12 @@ class MlmBertEncoder(BaseEncoder):
             epochs=n_epoch,
             callbacks=[evaluator]
         )
+
+    def save(self):
+        self.model.save_weights(self.weight_path)
+
+    def load(self):
+        self.model.load_weights(self.weight_path)
 
     def get_prob(self, text, mask_ind_list):
         text = text[-self.max_len + 2:]

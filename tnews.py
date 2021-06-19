@@ -71,16 +71,19 @@ def main():
     key_label = 'label_desc'
     key_sentence = 'sentence'
     train_data = load_data(train_fp, key_sentence, key_label)
+    data = [LabelData(text, label) for text, label in train_data]
     dev_data = load_data(dev_fp, key_sentence, key_label)
 
     # 初始化encoder
     model_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12'
+    weight_path = '../temp_tnews.weights'
+
     prefix = '以下一则关于啊啊的新闻。'
     mask_ind = [6, 7]
-    encoder = MlmBertEncoder(model_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 16)
+    encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 16)
 
     # fine tune
-    data = [LabelData(text, label) for text, label in train_data]
+    best_acc = 0
     for epoch in range(20):
         print(f'Training epoch {epoch}')
         encoder.train(1)
@@ -89,7 +92,14 @@ def main():
 
         print('Eval model')
         rst = eval_model(classifier, [dev_fp], key_sentence, key_label)
+        if rst > best_acc:
+            encoder.save()
+            best_acc = rst
+            print(f'Save for best {best_acc}')
+
         print(f'{train_fp} + {dev_fp} -> {rst}')
+
+    encoder.load()
 
     # 加载最终模型
     classifier = RetrieverClassifier(encoder, data, n_top=7)
