@@ -75,6 +75,7 @@ class data_generator(DataGenerator):
                 label_ids = self.tokenizer.encode(self.labels[label])[0]
                 if self.flag:
                     self.mask_indxes = [index for index, t_ids in enumerate(token_ids) if t_ids == 7233]
+
                 for i, label_id_ in zip(self.mask_idxes, label_ids):
                     # i: 7(mask1的index) ;j: 1093(农); i:8 (mask2的index) ;j: 689(业)
                     source_ids[i] = self.tokenizer._token_mask_id
