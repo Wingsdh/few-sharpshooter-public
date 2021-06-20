@@ -10,6 +10,7 @@
                    6/14/21: Create
 -------------------------------------------------
 """
+import re
 from enum import Enum
 import os
 
@@ -56,6 +57,7 @@ class data_generator(DataGenerator):
         self.mask_idxes = mask_idxes
         self.labels = labels
         self.prefix = prefix
+        self.flag = True if not mask_idxes else False
 
     def __iter__(self, random=False):
         batch_token_ids, batch_segment_ids, batch_output_ids = [], [], []
@@ -69,9 +71,10 @@ class data_generator(DataGenerator):
                 source_ids, target_ids = token_ids[:], token_ids[:]
 
             if label != 2:  # label是两个字的文本
+                if self.flag:
+                    self.mask_indxes = [index for index, t_ids in enumerate(token_ids) if t_ids == 7233]
                 # label_ids: [1093, 689]。 e.g. [101, 1093, 689, 102] =[CLS,农,业,SEP]. tokenizer.encode(label): ([101, 1093, 689, 102], [0, 0, 0, 0])
                 label_ids = self.tokenizer.encode(self.labels[label])[0][1:-1]
-
                 for i, label_id_ in zip(self.mask_idxes, label_ids):
                     # i: 7(mask1的index) ;j: 1093(农); i:8 (mask2的index) ;j: 689(业)
                     source_ids[i] = self.tokenizer._token_mask_id
@@ -155,7 +158,7 @@ class MlmBertEncoder(BaseEncoder):
 
     @property
     def dim(self):
-        each_dim = len(self.key_tokens)
+        each_dim = len(self.key_token_index)
         if self.merge == self.CONCAT:
             return each_dim * len(self.mask_indxes)
         elif self.merge == self.MEAN:
@@ -164,10 +167,8 @@ class MlmBertEncoder(BaseEncoder):
     CONCAT = 'concat'
     MEAN = 'mean'
 
-    def __init__(self, model_path, weight_path, train_data, dev_data, prefix, mask_idxes, labels, batch_size,
-                 merge=CONCAT,
+    def __init__(self, model_path, train_data, dev_data, prefix, mask_idxes, labels, batch_size, merge=CONCAT,
                  max_len=256):
-        self.weight_path = weight_path
         self.train_data = train_data
         self.dev_data = dev_data
         self.model, self.train_model, self.tokenizer = init_bert(model_path)
@@ -179,7 +180,7 @@ class MlmBertEncoder(BaseEncoder):
         self.mask_indxes = mask_idxes
         self.merge = merge
         self.max_len = max_len
-        self.pred_char_set = set()
+        self.flag = True if not mask_idxes else False
 
     def train(self, n_epoch=1):
         evaluator = Evaluator(self.model, self.dev_data)
@@ -192,18 +193,14 @@ class MlmBertEncoder(BaseEncoder):
             callbacks=[evaluator]
         )
 
-    def save(self):
-        self.model.save_weights(self.weight_path)
-
-    def load(self):
-        self.pred_char_set = set()
-        self.model.load_weights(self.weight_path)
-
     def get_prob(self, text, mask_ind_list):
         text = text[-self.max_len + 2:]
         token_ids, segment_ids = self.tokenizer.encode(text, maxlen=self.max_len)
         token_ids = token_ids[1:-1]
         segment_ids = segment_ids[1:-1]
+        if self.flag:
+            self.mask_indxes = [index for index, t_ids in enumerate(token_ids) if t_ids == 7233]
+            mask_ind_list = self.mask_indxes
         for mask_ind in mask_ind_list:
             token_ids[mask_ind] = self.tokenizer._token_mask_id
         token_ids, segment_ids = to_array([token_ids], [segment_ids])
@@ -213,8 +210,6 @@ class MlmBertEncoder(BaseEncoder):
         matrix = []
         for ind in self.mask_indxes:
             token_emb = [emb[ind][key_ind] for key_ind in self.key_token_index]
-            i = np.argmax(emb[ind])
-            self.pred_char_set.add(self.tokenizer.id_to_token(i))
             matrix.append(token_emb)
 
         if self.merge == self.CONCAT:
