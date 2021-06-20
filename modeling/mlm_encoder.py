@@ -155,7 +155,7 @@ class MlmBertEncoder(BaseEncoder):
 
     @property
     def dim(self):
-        each_dim = len(self.key_token_index)
+        each_dim = len(self.key_tokens)
         if self.merge == self.CONCAT:
             return each_dim * len(self.mask_indxes)
         elif self.merge == self.MEAN:
@@ -179,6 +179,7 @@ class MlmBertEncoder(BaseEncoder):
         self.mask_indxes = mask_idxes
         self.merge = merge
         self.max_len = max_len
+        self.pred_char_set = set()
 
     def train(self, n_epoch=1):
         evaluator = Evaluator(self.model, self.dev_data)
@@ -195,6 +196,7 @@ class MlmBertEncoder(BaseEncoder):
         self.model.save_weights(self.weight_path)
 
     def load(self):
+        self.pred_char_set = set()
         self.model.load_weights(self.weight_path)
 
     def get_prob(self, text, mask_ind_list):
@@ -211,6 +213,8 @@ class MlmBertEncoder(BaseEncoder):
         matrix = []
         for ind in self.mask_indxes:
             token_emb = [emb[ind][key_ind] for key_ind in self.key_token_index]
+            i = np.argmax(emb[ind])
+            self.pred_char_set.add(self.tokenizer.id_to_token(i))
             matrix.append(token_emb)
 
         if self.merge == self.CONCAT:

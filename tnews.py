@@ -14,8 +14,11 @@
 import sys
 import os
 
+from absl import app, flags
+
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
+from modeling.dqn import FewShotEnv, train_process, ClassFewShotEnv
 from modeling.classifier import LabelData
 from modeling.mlm_encoder import MlmBertEncoder
 from modeling.retriever_classifier import RetrieverClassifier
@@ -25,6 +28,9 @@ sys.path.append('../')
 sys.path.append('./')
 
 from utils.data_utils import load_data, load_test_data
+
+flags.DEFINE_integer('i', 0, 'index of tnews dataset')
+FLAGS = flags.FLAGS
 
 
 def infer(test_data, classifier):
@@ -63,16 +69,17 @@ def get_data_fp(use_index):
     return train_fp, dev_fp, my_test_fp, test_fp
 
 
-def main():
+def main(_):
     # 参数
 
     # 加载数据
-    train_fp, dev_fp, my_test_fp, test_fp = get_data_fp(0)
+    train_fp, dev_fp, my_test_fp, test_fp = get_data_fp(FLAGS.i)
     key_label = 'label_desc'
     key_sentence = 'sentence'
     train_data = load_data(train_fp, key_sentence, key_label)
     data = [LabelData(text, label) for text, label in train_data]
     dev_data = load_data(dev_fp, key_sentence, key_label)
+    dev_sentences = [LabelData(text, label) for text, label in dev_data]
 
     # 初始化encoder
     model_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12'
@@ -80,7 +87,8 @@ def main():
 
     prefix = '以下一则关于啊啊的新闻。'
     mask_ind = [6, 7]
-    encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 16)
+    encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 16,
+                             merge=MlmBertEncoder.MEAN)
 
     # fine tune
     best_acc = 0
@@ -115,4 +123,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    app.run(main)
