@@ -56,6 +56,7 @@ class data_generator(DataGenerator):
         self.mask_idxes = mask_idxes
         self.labels = labels
         self.prefix = prefix
+        self.flag = True if not mask_idxes else False
 
     def __iter__(self, random=False):
         batch_token_ids, batch_segment_ids, batch_output_ids = [], [], []
@@ -72,6 +73,8 @@ class data_generator(DataGenerator):
                 # label_ids: [1093, 689]。 e.g. [101, 1093, 689, 102] =[CLS,农,业,SEP]. tokenizer.encode(label): ([101, 1093, 689, 102], [0, 0, 0, 0])
                 # label_ids = self.tokenizer.encode(self.labels[label])[0][1:-1]
                 label_ids = self.tokenizer.encode(self.labels[label])[0]
+                if self.flag:
+                    self.mask_indxes = [index for index, t_ids in enumerate(token_ids) if t_ids == 7233]
 
                 for i, label_id_ in zip(self.mask_idxes, label_ids):
                     # i: 7(mask1的index) ;j: 1093(农); i:8 (mask2的index) ;j: 689(业)
@@ -183,6 +186,7 @@ class MlmBertEncoder(BaseEncoder):
         self.merge = merge
         self.max_len = max_len
         self.pred_char_set = set()
+        self.flag = True if not mask_idxes else False
 
     def train(self, n_epoch=1):
         evaluator = Evaluator(self.model, self.dev_data)
@@ -214,6 +218,8 @@ class MlmBertEncoder(BaseEncoder):
         # 用mlm模型预测被mask掉的部分
         emb = self.model.predict([token_ids, segment_ids])[0]
         matrix = []
+        if self.flag:
+            self.mask_indxes = [index for index, t_ids in enumerate(token_ids) if t_ids == 7233]
         for ind in self.mask_indxes:
             token_emb = [emb[ind][key_ind] for key_ind in self.key_token_index]
             i = np.argmax(emb[ind])
