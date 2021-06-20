@@ -27,7 +27,7 @@ sys.path.append('./')
 
 from utils.data_utils import load_data, load_test_data
 
-flags.DEFINE_string('c', '0', 'index of tnews dataset')
+flags.DEFINE_string('c', '0', 'index of dataset')
 FLAGS = flags.FLAGS
 
 
@@ -49,6 +49,7 @@ def get_data_fp(use_index):
     test_fp = 'dataset/eprstmt/test.json'
     my_test_fp = []
     for ind in range(5):
+        ind = str(ind)
         if ind != use_index:
             my_test_fp.append(f'dataset/eprstmt/dev_{ind}.json')
     return train_fp, dev_fp, my_test_fp, test_fp
@@ -58,7 +59,7 @@ def main(_):
     # 参数
 
     # 加载数据
-    train_fp, dev_fp, my_test_fp, test_fp = get_data_fp(0)
+    train_fp, dev_fp, my_test_fp, test_fp = get_data_fp(FLAGS.c)
     key_label = 'label'
     key_sentence = 'sentence'
     train_data = load_data(train_fp, key_sentence, key_label)
