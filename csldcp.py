@@ -25,6 +25,10 @@ sys.path.append('../')
 sys.path.append('./')
 
 from utils.data_utils import load_data, load_test_data
+from absl import flags, app
+
+flags.DEFINE_string('c', '0', 'index of dataset')
+FLAGS = flags.FLAGS
 
 
 def infer(test_data, classifier):
@@ -115,7 +119,7 @@ def get_data_fp(use_index):
     return train_fp, dev_fp, my_test_fp, test_fp
 
 
-def main():
+def main(_):
     # 参数
 
     # 加载数据
@@ -127,24 +131,33 @@ def main():
 
     # 初始化encoder
     model_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12'
+    weight_path = '../temp_csldcp.weights'
+
     prefix = '这篇安安论文阐述了'
     mask_ind = [2, 3]
-    encoder = MlmBertEncoder(model_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 16)
+    encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 8)
 
     # fine tune
+    n_top = len(train_data) // 10
+    best_acc = 0
     data = [LabelData(text, label) for text, label in train_data]
-    for epoch in range(20):
+    for epoch in range(10):
         print(f'Training epoch {epoch}')
         encoder.train(1)
         # 加载分类器
-        classifier = RetrieverClassifier(encoder, data, n_top=7)
+        classifier = RetrieverClassifier(encoder, data, n_top=n_top)
 
         print('Evel model')
         rst = eval_model(classifier, [dev_fp], key_sentence, key_label)
         print(f'{train_fp} + {dev_fp} -> {rst}')
+        if rst > best_acc:
+            encoder.save()
+            best_acc = rst
+            print(f'Save for best {best_acc}')
 
     # 加载最终模型
-    classifier = RetrieverClassifier(encoder, data, n_top=3)
+    encoder.load()
+    classifier = RetrieverClassifier(encoder, data, n_top=n_top)
 
     # 自测试集测试
     rst = eval_model(classifier, my_test_fp, key_sentence, key_label)
@@ -153,8 +166,9 @@ def main():
     # 官方测试集
     test_data = load_test_data(test_fp)
     test_data = infer(test_data, classifier)
-    # dump_result('tnewsf_predict.json', test_data)
+    outp_fn = f'csldcp_predict{FLAGS.c.replace("few_all", "all")}.json'
+    dump_result(outp_fn, test_data)
 
 
 if __name__ == "__main__":
-    main()
+    app.run(main)
