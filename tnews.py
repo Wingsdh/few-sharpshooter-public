@@ -29,7 +29,7 @@ sys.path.append('./')
 
 from utils.data_utils import load_data, load_test_data
 
-flags.DEFINE_integer('i', 0, 'index of tnews dataset')
+flags.DEFINE_string('c', '0', 'index of tnews dataset')
 FLAGS = flags.FLAGS
 
 
@@ -73,7 +73,7 @@ def main(_):
     # 参数
 
     # 加载数据
-    train_fp, dev_fp, my_test_fp, test_fp = get_data_fp(FLAGS.i)
+    train_fp, dev_fp, my_test_fp, test_fp = get_data_fp(FLAGS.c)
     key_label = 'label_desc'
     key_sentence = 'sentence'
     train_data = load_data(train_fp, key_sentence, key_label)
@@ -88,15 +88,16 @@ def main(_):
     prefix = '以下一则关于啊啊的新闻。'
     mask_ind = [6, 7]
     encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 16,
-                             merge=MlmBertEncoder.MEAN)
+                             merge=MlmBertEncoder.CONCAT)
+    n_top = len(train_data) // 10
 
     # fine tune
     best_acc = 0
-    for epoch in range(20):
+    for epoch in range(10):
         print(f'Training epoch {epoch}')
         encoder.train(1)
         # 加载分类器
-        classifier = RetrieverClassifier(encoder, data, n_top=7)
+        classifier = RetrieverClassifier(encoder, data, n_top=n_top)
 
         print('Eval model')
         rst = eval_model(classifier, [dev_fp], key_sentence, key_label)
@@ -119,7 +120,8 @@ def main(_):
     # 官方测试集
     test_data = load_test_data(test_fp)
     test_data = infer(test_data, classifier)
-    dump_result('tnewsf_predict.json', test_data)
+    outp_fn = f'tnewsf_predict_{FLAGS.c.replace("few_all", "all")}.json'
+    dump_result(outp_fn, test_data)
 
 
 if __name__ == "__main__":
