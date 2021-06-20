@@ -25,6 +25,10 @@ sys.path.append('../')
 sys.path.append('./')
 
 from utils.data_utils import load_data, load_test_data
+from absl import flags, app
+
+flags.DEFINE_string('c', '0', 'index of tnews dataset')
+FLAGS = flags.FLAGS
 
 
 def infer(test_data, classifier):
@@ -155,16 +159,16 @@ def get_data_fp(use_index):
     test_fp = 'dataset/iflytek/test.json'
     my_test_fp = []
     for ind in range(5):
-        if ind != use_index:
+        if str(ind) != use_index:
             my_test_fp.append(f'dataset/iflytek/dev_{ind}.json')
     return train_fp, dev_fp, my_test_fp, test_fp
 
 
-def main():
+def main(_):
     # 参数
 
     # 加载数据
-    train_fp, dev_fp, my_test_fp, test_fp = get_data_fp(0)
+    train_fp, dev_fp, my_test_fp, test_fp = get_data_fp(FLAGS.c)
     key_label = 'label_des'
     key_sentence = 'sentence'
     train_data = load_data(train_fp, key_sentence, key_label)
@@ -172,23 +176,30 @@ def main():
 
     # 初始化encoder
     model_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12'
+    weight_path = '../temp_iflytek.weights'
     prefix = '做为一款游戏应用，'
     mask_ind = [4, 5]
-    encoder = MlmBertEncoder(model_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 16)
+    encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 8)
 
     # fine tune
     data = [LabelData(text, label) for text, label in train_data]
-    for epoch in range(20):
+    best_acc = 0
+    for epoch in range(10):
         print(f'Training epoch {epoch}')
         encoder.train(1)
         # 加载分类器
-        classifier = RetrieverClassifier(encoder, data, n_top=7)
+        classifier = RetrieverClassifier(encoder, data, n_top=3)
 
         print('Evel model')
         rst = eval_model(classifier, [dev_fp], key_sentence, key_label)
         print(f'{train_fp} + {dev_fp} -> {rst}')
+        if rst > best_acc:
+            encoder.save()
+            best_acc = rst
+            print(f'Save for best {best_acc}')
 
     # 加载最终模型
+    encoder.load()
     classifier = RetrieverClassifier(encoder, data, n_top=3)
 
     # 自测试集测试
@@ -196,10 +207,12 @@ def main():
     print(f'{train_fp} + {dev_fp} -> {rst}')
 
     # 官方测试集
-    # test_data = load_test_data(test_fp)
-    # test_data = infer(test_data, classifier)
-    # dump_result('tnewsf_predict.json', test_data)
+    test_data = load_test_data(test_fp)
+    test_data = infer(test_data, classifier)
+
+    outp_fn = f'iflytekf_predict{FLAGS.c.replace("few_all", "all")}.json'
+    dump_result(outp_fn, test_data)
 
 
 if __name__ == "__main__":
-    main()
+    app.run(main)
