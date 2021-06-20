@@ -74,7 +74,7 @@ class data_generator(DataGenerator):
                 # label_ids = self.tokenizer.encode(self.labels[label])[0][1:-1]
                 label_ids = self.tokenizer.encode(self.labels[label])[0]
                 if self.flag:
-                    self.mask_indxes = [index for index, t_ids in enumerate(token_ids) if t_ids == 7233]
+                    self.mask_idxes = [index for index, t_ids in enumerate(token_ids) if t_ids == 7233]
 
                 for i, label_id_ in zip(self.mask_idxes, label_ids):
                     # i: 7(mask1的index) ;j: 1093(农); i:8 (mask2的index) ;j: 689(业)
@@ -171,7 +171,8 @@ class MlmBertEncoder(BaseEncoder):
 
     def __init__(self, model_path, weight_path, train_data, dev_data, prefix, mask_idxes, labels, batch_size,
                  merge=MEAN,
-                 max_len=256):
+                 max_len=256,
+                 norm=False):
         mask_idxes = [i + 1 for i in mask_idxes]
         self.weight_path = weight_path
         self.train_data = train_data
@@ -187,6 +188,7 @@ class MlmBertEncoder(BaseEncoder):
         self.max_len = max_len
         self.pred_char_set = set()
         self.flag = True if not mask_idxes else False
+        self.norm = norm
 
     def train(self, n_epoch=1):
         evaluator = Evaluator(self.model, self.dev_data)
@@ -211,15 +213,18 @@ class MlmBertEncoder(BaseEncoder):
         token_ids, segment_ids = self.tokenizer.encode(text, maxlen=self.max_len)
         # token_ids = token_ids[1:-1]
         # segment_ids = segment_ids[1:-1]
+        if self.flag:
+            self.mask_indxes = [index for index, t_ids in enumerate(token_ids) if t_ids == 7233]
+            mask_ind_list = self.mask_indxes
+
         for mask_ind in mask_ind_list:
             token_ids[mask_ind] = self.tokenizer._token_mask_id
+
         token_ids, segment_ids = to_array([token_ids], [segment_ids])
 
         # 用mlm模型预测被mask掉的部分
         emb = self.model.predict([token_ids, segment_ids])[0]
         matrix = []
-        if self.flag:
-            self.mask_indxes = [index for index, t_ids in enumerate(token_ids) if t_ids == 7233]
         for ind in self.mask_indxes:
             token_emb = [emb[ind][key_ind] for key_ind in self.key_token_index]
             i = np.argmax(emb[ind])
@@ -238,6 +243,7 @@ class MlmBertEncoder(BaseEncoder):
     def encode(self, text):
         text = self.prefix + text
         vec = self.get_prob(text, self.mask_indxes)
-        # norm = np.apply_along_axis(np.linalg.norm, 0, vec)
-        # vec = vec / norm
+        if self.norm:
+            norm = np.apply_along_axis(np.linalg.norm, 0, vec)
+            vec = vec / norm
         return vec

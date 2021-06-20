@@ -57,6 +57,22 @@ label_2_desc = {'news_tech': '科技',
                 'news_agriculture': '农业',
                 'news_stock': '股票'}
 
+code_2_label = {0: 'news_tech',
+                1: 'news_entertainment',
+                2: 'news_car',
+                3: 'news_travel',
+                4: 'news_finance',
+                5: 'news_edu',
+                6: 'news_world',
+                7: 'news_house',
+                8: 'news_game',
+                9: 'news_military',
+                10: 'news_story',
+                11: 'news_culture',
+                12: 'news_sports',
+                13: 'news_agriculture',
+                14: 'news_stock'}
+
 
 def get_data_fp(use_index):
     train_fp = f'dataset/tnews/train_{use_index}.json'
@@ -64,7 +80,7 @@ def get_data_fp(use_index):
     test_fp = 'dataset/tnews/test.json'
     my_test_fp = []
     for ind in range(5):
-        if ind != use_index:
+        if str(ind) != use_index:
             my_test_fp.append(f'dataset/tnews/dev_{ind}.json')
     return train_fp, dev_fp, my_test_fp, test_fp
 
@@ -111,11 +127,22 @@ def main(_):
     encoder.load()
 
     # 加载最终模型
-    classifier = RetrieverClassifier(encoder, data, n_top=7)
+    classifier = RetrieverClassifier(encoder, data, n_top=n_top)
+
+    # train_py_env = ClassFewShotEnv(classifier.retriever, dev_sentences, code_2_label)
+    # train_py_env.reset()
+    # train_process(train_py_env, train_py_env)
 
     # 自测试集测试
     rst = eval_model(classifier, my_test_fp, key_sentence, key_label)
     print(f'{train_fp} + {dev_fp} -> {rst}')
+    # encoder.key_tokens.update(encoder.pred_char_set)
+    # encoder.key_token_index = encoder.tokenizer.tokens_to_ids(encoder.key_tokens)
+    # classifier = RetrieverClassifier(encoder, data, n_top=7)
+    # rst = eval_model(classifier, my_test_fp, key_sentence, key_label)
+    print(f'{train_fp} + {dev_fp} -> {rst}')
+    print(encoder.pred_char_set)
+    print(encoder.pred_char_set - encoder.key_tokens)
 
     # 官方测试集
     test_data = load_test_data(test_fp)

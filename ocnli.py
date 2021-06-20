@@ -31,17 +31,17 @@ def load_ocnli_data(fp, key_sentence_1, key_sentence_2, key_label):
             sentence_1 = d[key_sentence_1]
             sentence_2 = d[key_sentence_2]
             label = d[key_label]
-            sentence = sentence_1 +"？"+"锟锟"+","+sentence_2
+            sentence = sentence_1 + "？" + "锟锟" + "," + sentence_2
             data.append((sentence, label))
         return data
 
 
-# def infer(test_data, classifier):
-#     for d in test_data:
-#         sentence = d.pop('text')
-#         label = classifier.classify(sentence)
-#         d['label'] = label
-#     return test_data
+def infer(test_data, classifier):
+    for d in test_data:
+        sentence = d.pop('text')
+        label = classifier.classify(sentence)
+        d['label'] = label
+    return test_data
 
 
 def get_data_fp(use_index):
@@ -98,15 +98,15 @@ def main():
 
     # fine tune
     data = [LabelData(text, label) for text, label in train_data]
-    # for epoch in range(10):
-    #     print(f'Training epoch {epoch}')
-    #     encoder.train(1)
-    #     # 加载分类器
-    #     classifier = RetrieverClassifier(encoder, data, n_top=7)
-    #
-    #     print('Evel model')
-    #     rst = eval_bustm_model(classifier, [dev_fp], key_sentence_1, key_sentence_2, key_label)
-    #     print(f'{train_fp} + {dev_fp} -> {rst}')
+    for epoch in range(10):
+        print(f'Training epoch {epoch}')
+        encoder.train(1)
+        # 加载分类器
+        classifier = RetrieverClassifier(encoder, data, n_top=7)
+
+        print('Evel model')
+        rst = eval_ocnli_model(classifier, [dev_fp], key_sentence_1, key_sentence_2, key_label)
+        print(f'{train_fp} + {dev_fp} -> {rst}')
 
     # 加载最终模型
     classifier = RetrieverClassifier(encoder, data, n_top=3)
@@ -116,9 +116,9 @@ def main():
     print(f'{train_fp} + {dev_fp} -> {rst}')
 
     # 官方测试集
-    # test_data = load_test_data(test_fp)
-    # test_data = infer(test_data, classifier)
-    # dump_result('cluewsc_predict.json', test_data)
+    test_data = load_test_data(test_fp)
+    test_data = infer(test_data, classifier)
+    dump_result('cluewsc_predict.json', test_data)
 
 
 if __name__ == "__main__":

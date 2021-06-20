@@ -210,7 +210,7 @@ def main(_):
     test_data = load_test_data(test_fp)
     test_data = infer(test_data, classifier)
 
-    outp_fn = f'iflytekf_predict{FLAGS.c.replace("few_all", "all")}.json'
+    outp_fn = f'iflytekf_predict_{FLAGS.c.replace("few_all", "all")}.json'
     dump_result(outp_fn, test_data)
 
 
