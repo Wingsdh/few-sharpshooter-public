@@ -22,8 +22,19 @@ def load_data(fp, key_sentence, key_label):
 
         data = [(d[key_sentence], d[key_label]) for d in data]
         print(f'Loaded {len(data)} data from {fp}')
-        return data
+    return data
 
+
+def load_csl_keyword(fp, key_sentence, key_label,keyword):
+    data = []
+    with open(fp, 'r', encoding='utf-8') as fd:
+        for l in fd:
+            d = json.loads(l.strip())
+            data.append(d)
+        list_keyword = [''.join(da[keyword])for da in data]
+        data = [(d[key_sentence]+str_keyword, d[key_label]) for d,str_keyword in zip(data,list_keyword)]
+        print(f'Loaded {len(data)} data from {fp}')
+    return data
 
 def load_wsc_data(fp, key_sentence, key_label):
     data = []
@@ -45,6 +56,7 @@ def load_wsc_data(fp, key_sentence, key_label):
         return data
 
 
+
 def load_test_data(fp):
     data = []
     with open(fp, 'r', encoding='utf-8') as fd:
@@ -54,9 +66,3 @@ def load_test_data(fp):
 
         print(f'Loaded test data {len(data)} data from {fp}')
         return data
-
-# if __name__== '__main__':
-#     fp = "../dataset/cluewsc/train_0.json"
-#     key_sentence = 'text'
-#     key_label = 'label'
-#     load_wsc_data(fp,key_sentence,key_label)
