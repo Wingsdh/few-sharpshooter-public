@@ -53,5 +53,5 @@ def eval_model(classifier, test_fps, key_sentence, key_label, need_print=False):
 def dump_result(filename, data, root_path='../fewshot_train/result/'):
     with open(os.path.join(root_path, filename), 'w', encoding='utf-8') as fd:
         for d in data:
-            json.dump(d, fd)
+            json.dump(d, fd, ensure_ascii=False)
             fd.write("\n")

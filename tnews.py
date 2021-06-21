@@ -37,7 +37,7 @@ def infer(test_data, classifier):
     for d in test_data:
         sentence = d.pop('sentence')
         label = classifier.classify(sentence)
-        d['label'] = label
+        d['label'] = label_2_num[label]
     return test_data
 
 
@@ -56,7 +56,23 @@ label_2_desc = {'news_tech': '科技',
                 'news_sports': '体育',
                 'news_agriculture': '农业',
                 'news_stock': '股票'}
-
+label_2_num = {
+    'news_car': '107',
+    'news_world': '113',
+    'news_stock': '114',
+    'news_story': '100',
+    'news_culture': '101',
+    'news_edu': '108',
+    'news_house': '106',
+    'news_game': '116',
+    'news_travel': '112',
+    'news_sports': '103',
+    'news_military': '110',
+    'news_finance': '104',
+    'news_tech': '109',
+    'news_entertainment': '102',
+    'news_agriculture': '115',
+}
 code_2_label = {0: 'news_tech',
                 1: 'news_entertainment',
                 2: 'news_car',
@@ -98,7 +114,7 @@ def main(_):
     dev_sentences = [LabelData(text, label) for text, label in dev_data]
 
     # 初始化encoder
-    model_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12'
+    model_path = 'pretrained_model/roberta'
     weight_path = '../temp_tnews.weights'
 
     prefix = '以下一则关于啊啊的新闻。'
@@ -134,8 +150,8 @@ def main(_):
     # train_process(train_py_env, train_py_env)
 
     # 自测试集测试
-    rst = eval_model(classifier, my_test_fp, key_sentence, key_label)
-    print(f'{train_fp} + {dev_fp} -> {rst}')
+    # rst = eval_model(classifier, my_test_fp, key_sentence, key_label)
+    # print(f'{train_fp} + {dev_fp} -> {rst}')
     # encoder.key_tokens.update(encoder.pred_char_set)
     # encoder.key_token_index = encoder.tokenizer.tokens_to_ids(encoder.key_tokens)
     # classifier = RetrieverClassifier(encoder, data, n_top=7)
