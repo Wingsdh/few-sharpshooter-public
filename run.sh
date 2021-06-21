@@ -56,13 +56,13 @@ elif [[ $1 == 'bustm' ]]; then
   python bustm.py -c 3
   python bustm.py -c 4
 
-elif [[ $1 == 'csldcp' ]]; then
-  python csldcp.py -c few_all
-  python csldcp.py -c 0
-  python csldcp.py -c 1
-  python csldcp.py -c 2
-  python csldcp.py -c 3
-  python csldcp.py -c 4
+elif [[ $1 == 'ocnli' ]]; then
+  python ocnli.py -c few_all
+  python ocnli.py -c 0
+  python ocnli.py -c 1
+  python ocnli.py -c 2
+  python ocnli.py -c 3
+  python ocnli.py -c 4
 
 else
   echo 'unknown argment 1'

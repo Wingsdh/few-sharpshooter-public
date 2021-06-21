@@ -9,6 +9,8 @@ import sys
 import os
 import json
 from tqdm import tqdm
+
+from utils.cls_train import dump_result
 from utils.seed import set_seed
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
@@ -25,6 +27,8 @@ sys.path.append('./')
 label_2_desc = {'neutral': '并且', 'entailment': '是的', 'contradiction': '不是'}
 flags.DEFINE_string('c', '0', 'index of ocnli dataset')
 FLAGS = flags.FLAGS
+
+
 # set_seed()
 
 
@@ -37,6 +41,7 @@ def infer(test_data, classifier):
         d['label'] = label
     return test_data
 
+
 def load_ocnli_data(fp, key_sentence_1, key_sentence_2, key_label):
     data = []
     with open(fp, 'r', encoding='utf-8') as fd:
@@ -48,6 +53,7 @@ def load_ocnli_data(fp, key_sentence_1, key_sentence_2, key_label):
             sentence = sentence_1 + "？" + "锟锟" + "," + sentence_2
             data.append((sentence, label))
         return data
+
 
 def get_data_fp(use_index):
     train_fp = f'dataset/ocnli/train_{use_index}.json'
@@ -78,11 +84,6 @@ def eval_ocnli_model(classifier, test_fps, key_sentence_1, key_sentence_2, key_l
 
     return cnt / len(test_data)
 
-def dump_result(filename, data, root_path='fewshot_train/result/'):
-    with open(os.path.join(root_path, filename), 'w', encoding='utf-8') as fd:
-        for d in data:
-            json.dump(d, fd)
-            fd.write("\n")
 
 def main(_):
     # 加载数据
@@ -94,7 +95,7 @@ def main(_):
     dev_data = load_ocnli_data(dev_fp, key_sentence_1, key_sentence_2, key_label)
 
     # 初始化encoder
-    model_path = 'pretrained_model/roberta'
+    model_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12'
     weight_path = '../temp_ocnli.weights'
 
     prefix = ''
@@ -124,13 +125,13 @@ def main(_):
     classifier = RetrieverClassifier(encoder, data, n_top=7)
 
     # 自测试集测试
-    # rst = eval_ocnli_model(classifier, my_test_fp, key_sentence_1, key_sentence_2, key_label)
-    # print(f'{train_fp} + {dev_fp} -> {rst}')
+    rst = eval_ocnli_model(classifier, my_test_fp, key_sentence_1, key_sentence_2, key_label)
+    print(f'{train_fp} + {dev_fp} -> {rst}')
 
     # 官方测试集
     test_data = load_test_data(test_fp)
     test_data = infer(test_data, classifier)
-    outp_fn = f'ocnli_predict_{FLAGS.c.replace("few_all", "all")}.json'
+    outp_fn = f'ocnlif_predict_{FLAGS.c.replace("few_all", "all")}.json'
     dump_result(outp_fn, test_data)
 
 

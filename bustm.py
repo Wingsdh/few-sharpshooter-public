@@ -10,6 +10,7 @@ import os
 import json
 from tqdm import tqdm
 
+from utils.cls_train import dump_result
 from utils.seed import set_seed
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
@@ -80,13 +81,6 @@ def eval_bustm_model(classifier, test_fps, key_sentence_1, key_sentence_2, key_l
             print(sentence)
 
     return cnt / len(test_data)
-
-
-def dump_result(filename, data, root_path='../fewshot_train/result/'):
-    with open(os.path.join(root_path, filename), 'w', encoding='utf-8') as fd:
-        for d in data:
-            json.dump(d, fd)
-            fd.write("\n")
 
 
 def main(_):

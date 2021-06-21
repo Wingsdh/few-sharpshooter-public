@@ -131,7 +131,7 @@ def main(_):
     dev_data = load_data(dev_fp, key_sentence, key_label)
 
     # 初始化encoder
-    model_path = 'pretrained_model/roberta'
+    model_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12'
     weight_path = '../temp_csldcp.weights'
 
     prefix = '这篇安安论文阐述了'
@@ -142,7 +142,7 @@ def main(_):
     n_top = len(train_data) // 10
     best_acc = 0
     data = [LabelData(text, label) for text, label in train_data]
-    for epoch in range(5):
+    for epoch in range(10):
         print(f'Training epoch {epoch}')
         encoder.train(1)
         # 加载分类器
@@ -161,13 +161,13 @@ def main(_):
     classifier = RetrieverClassifier(encoder, data, n_top=n_top)
 
     # 自测试集测试
-    # rst = eval_model(classifier, my_test_fp, key_sentence, key_label)
-    # print(f'{train_fp} + {dev_fp} -> {rst}')
+    rst = eval_model(classifier, my_test_fp, key_sentence, key_label)
+    print(f'{train_fp} + {dev_fp} -> {rst}')
 
     # 官方测试集
     test_data = load_test_data(test_fp)
     test_data = infer(test_data, classifier)
-    outp_fn = f'csldcp_predict{FLAGS.c.replace("few_all", "all")}.json'
+    outp_fn = f'csldcp_predict_{FLAGS.c.replace("few_all", "all")}.json'
     dump_result(outp_fn, test_data)
 
 

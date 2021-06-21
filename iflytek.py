@@ -308,7 +308,7 @@ def main(_):
         print(f'Training epoch {epoch}')
         encoder.train(1)
         # 加载分类器
-        classifier = RetrieverClassifier(encoder, data, n_top=3)
+        classifier = RetrieverClassifier(encoder, data, n_top=11)
 
         print('Evel model')
         rst = eval_model(classifier, [dev_fp], key_sentence, key_label)
@@ -320,11 +320,11 @@ def main(_):
 
     # # 加载最终模型
     encoder.load()
-    classifier = RetrieverClassifier(encoder, data, n_top=3)
+    classifier = RetrieverClassifier(encoder, data, n_top=11)
 
     # 自测试集测试
-    # rst = eval_model(classifier, my_test_fp, key_sentence, key_label)
-    # print(f'{train_fp} + {dev_fp} -> {rst}')
+    rst = eval_model(classifier, my_test_fp, key_sentence, key_label)
+    print(f'{train_fp} + {dev_fp} -> {rst}')
 
     # 官方测试集
     test_data = load_test_data(test_fp)

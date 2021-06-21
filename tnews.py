@@ -150,15 +150,15 @@ def main(_):
     # train_process(train_py_env, train_py_env)
 
     # 自测试集测试
-    # rst = eval_model(classifier, my_test_fp, key_sentence, key_label)
-    # print(f'{train_fp} + {dev_fp} -> {rst}')
+    rst = eval_model(classifier, my_test_fp, key_sentence, key_label)
+    print(f'{train_fp} + {dev_fp} -> {rst}')
     # encoder.key_tokens.update(encoder.pred_char_set)
     # encoder.key_token_index = encoder.tokenizer.tokens_to_ids(encoder.key_tokens)
     # classifier = RetrieverClassifier(encoder, data, n_top=7)
     # rst = eval_model(classifier, my_test_fp, key_sentence, key_label)
-    print(f'{train_fp} + {dev_fp} -> {rst}')
-    print(encoder.pred_char_set)
-    print(encoder.pred_char_set - encoder.key_tokens)
+    # print(f'{train_fp} + {dev_fp} -> {rst}')
+    # print(encoder.pred_char_set)
+    # print(encoder.pred_char_set - encoder.key_tokens)
 
     # 官方测试集
     test_data = load_test_data(test_fp)
