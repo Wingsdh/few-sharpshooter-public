@@ -15,6 +15,8 @@ import sys
 import os
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+from utils.seed import set_seed
+set_seed()
 
 from modeling.classifier import LabelData
 from modeling.mlm_encoder import MlmBertEncoder
@@ -34,7 +36,7 @@ FLAGS = flags.FLAGS
 def infer(test_data, classifier):
     for d in test_data:
         sentence = d.pop('sentence')
-        label = classifier.classify(sentence)
+        label, _ = classifier.classify(sentence)
         label_id = label_desc_id[label]
         d['label'] = label_id
     return test_data
@@ -292,23 +294,30 @@ def main(_):
     key_label = 'label_des'
     key_sentence = 'sentence'
     train_data = load_data(train_fp, key_sentence, key_label)
+    data = [LabelData(text, label) for text, label in train_data]
     dev_data = load_data(dev_fp, key_sentence, key_label)
 
     # 初始化encoder
-    model_path = 'pretrained_model/roberta'
+    n_top = 11
+    model_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12'
     weight_path = '../temp_iflytek.weights'
-    prefix = '做为一款游戏应用，'
-    mask_ind = [4, 5]
-    encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 8)
+    prefix = '以下是一款游戏软件，'
+    mask_ind = [5, 6]
+    encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 8,
+                             merge=MlmBertEncoder.CONCAT, norm=False)
+    classifier = RetrieverClassifier(encoder, data, n_top=n_top)
+
+    print('Evel model')
+    rst = eval_model(classifier, [dev_fp], key_sentence, key_label)
+    print(f'{train_fp} + {dev_fp} -> {rst}')
 
     # fine tune
-    data = [LabelData(text, label) for text, label in train_data]
     best_acc = 0
     for epoch in range(10):
         print(f'Training epoch {epoch}')
         encoder.train(1)
         # 加载分类器
-        classifier = RetrieverClassifier(encoder, data, n_top=11)
+        classifier = RetrieverClassifier(encoder, data, n_top=n_top)
 
         print('Evel model')
         rst = eval_model(classifier, [dev_fp], key_sentence, key_label)
@@ -320,7 +329,7 @@ def main(_):
 
     # # 加载最终模型
     encoder.load()
-    classifier = RetrieverClassifier(encoder, data, n_top=11)
+    classifier = RetrieverClassifier(encoder, data, n_top=n_top)
 
     # 自测试集测试
     rst = eval_model(classifier, my_test_fp, key_sentence, key_label)

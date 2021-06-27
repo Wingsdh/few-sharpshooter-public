@@ -39,13 +39,14 @@ def eval_model(classifier, test_fps, key_sentence, key_label, need_print=False):
         test_data.extend(each_data)
 
     for sentence, label in tqdm(test_data):
-        pred_label = classifier.classify(sentence)
+        pred_label, info = classifier.classify(sentence)
         if label == pred_label:
             cnt += 1
         elif need_print:
             print('-----')
             print(label, pred_label)
             print(sentence)
+            print(info)
 
     return cnt / len(test_data)
 

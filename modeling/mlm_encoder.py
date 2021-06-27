@@ -132,7 +132,6 @@ def init_bert(model_path):
         else:
             layer.trainable = False
     train_model.compile(optimizer=Adam(1e-5))
-    train_model.summary()
 
     return model, train_model, train_model, tokenizer
 
