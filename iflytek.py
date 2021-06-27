@@ -300,7 +300,7 @@ def main(_):
     # 初始化encoder
     n_top = 11
     model_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12'
-    weight_path = '../temp_iflytek.weights'
+    weight_path = f'../temp_iflytek_{FLAGS.c}.weights'
     prefix = '以下是一款游戏软件，'
     mask_ind = [5, 6]
     encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 8,

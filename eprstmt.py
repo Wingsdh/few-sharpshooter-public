@@ -26,6 +26,9 @@ sys.path.append('../')
 sys.path.append('./')
 
 from utils.data_utils import load_data, load_test_data
+from utils.seed import set_seed
+
+set_seed()
 
 flags.DEFINE_string('c', '0', 'index of dataset')
 FLAGS = flags.FLAGS
@@ -34,12 +37,12 @@ FLAGS = flags.FLAGS
 def infer(test_data, classifier):
     for d in test_data:
         sentence = d.pop('sentence')
-        label = classifier.classify(sentence)
+        label, _ = classifier.classify(sentence)
         d['label'] = label
     return test_data
 
 
-label_2_desc = {'Positive': '开心',
+label_2_desc = {'Positive': '满意',
                 'Negative': '失望'}
 
 
@@ -67,20 +70,24 @@ def main(_):
     data = [LabelData(text, label) for text, label in train_data]
 
     # 初始化encoder
+    n_top = 3
     model_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12'
-    weight_path = '../temp_eprstmt.weights'
-
-    prefix = '我很啊啊！'
-    mask_ind = [2, 3]
-    encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 4)
+    weight_path = f'../temp_eprstmt_{FLAGS.c}.weights'
+    prefix = '对以下产品感到十分锟锟，'
+    mask_ind = [9, 10]
+    encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 8,
+                             merge=MlmBertEncoder.CONCAT, norm=False)
+    classifier = RetrieverClassifier(encoder, data, n_top=n_top)
+    rst = eval_model(classifier, [dev_fp], key_sentence, key_label)
+    print(f'{train_fp} + {dev_fp} -> {rst}')
 
     # fine tune
     best_acc = 0
-    for epoch in range(10):
+    for epoch in range(20):
         print(f'Training epoch {epoch}')
         encoder.train(1)
         # 加载分类器
-        classifier = RetrieverClassifier(encoder, data, n_top=3)
+        classifier = RetrieverClassifier(encoder, data, n_top=n_top)
 
         print('Eval model')
         rst = eval_model(classifier, [dev_fp], key_sentence, key_label)
@@ -92,7 +99,7 @@ def main(_):
 
     # 加载最终模型
     encoder.load()
-    classifier = RetrieverClassifier(encoder, data, n_top=3)
+    classifier = RetrieverClassifier(encoder, data, n_top=n_top)
 
     # 自测试集测试
     rst = eval_model(classifier, my_test_fp, key_sentence, key_label)

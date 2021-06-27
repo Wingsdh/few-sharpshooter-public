@@ -19,22 +19,21 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 from modeling.classifier import LabelData
 from modeling.mlm_encoder import MlmBertEncoder
 from modeling.retriever_classifier import RetrieverClassifier
+from utils.seed import set_seed
 from utils.cls_train import eval_model, dump_result
-
-sys.path.append('../')
-sys.path.append('./')
-
 from utils.data_utils import load_data, load_test_data
 from absl import flags, app
 
 flags.DEFINE_string('c', '0', 'index of dataset')
 FLAGS = flags.FLAGS
 
+set_seed()
+
 
 def infer(test_data, classifier):
     for d in test_data:
         sentence = d.pop('content')
-        label = classifier.classify(sentence)
+        label, _ = classifier.classify(sentence)
         d['label'] = label
     return test_data
 
@@ -121,33 +120,34 @@ def get_data_fp(use_index):
 
 
 def main(_):
-    # 参数
-
     # 加载数据
     train_fp, dev_fp, my_test_fp, test_fp = get_data_fp(FLAGS.c)
     key_label = 'label'
     key_sentence = 'content'
     train_data = load_data(train_fp, key_sentence, key_label)
     dev_data = load_data(dev_fp, key_sentence, key_label)
+    data = [LabelData(text, label) for text, label in train_data]
 
     # 初始化encoder
+    n_top = 11
     model_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12'
-    weight_path = '../temp_csldcp.weights'
-
-    prefix = '这篇安安论文阐述了'
-    mask_ind = [2, 3]
-    encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 8)
+    weight_path = f'../temp_csldcp_{FLAGS.c}.weights'
+    prefix = '以下是一篇锟锟论文，'
+    mask_ind = [5, 6]
+    encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 8,
+                             merge=MlmBertEncoder.CONCAT, norm=False)
+    classifier = RetrieverClassifier(encoder, data, n_top=n_top)
+    rst = eval_model(classifier, [dev_fp], key_sentence, key_label)
+    print(f'{train_fp} + {dev_fp} -> {rst}')
 
     # fine tune
-    n_top = len(train_data) // 10
     best_acc = 0
-    data = [LabelData(text, label) for text, label in train_data]
     for epoch in range(10):
         print(f'Training epoch {epoch}')
         encoder.train(1)
+
         # 加载分类器
         classifier = RetrieverClassifier(encoder, data, n_top=n_top)
-
         print('Evel model')
         rst = eval_model(classifier, [dev_fp], key_sentence, key_label)
         print(f'{train_fp} + {dev_fp} -> {rst}')
