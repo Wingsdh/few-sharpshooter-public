@@ -60,12 +60,12 @@ class RetrieverClassifier(BaseClassifier):
 
     def classify(self, text):
         most_sim_datas, scores = self.retriever.retrieve(text, n_top=self.n_top)
-        label_2_count = defaultdict(int)
+        label_2_count = defaultdict(list)
         for d, s in zip(most_sim_datas, scores):
-            label_2_count[d.label] += s
+            label_2_count[d.label].append(s)
 
-        label = max(label_2_count.keys(), key=lambda x: label_2_count[x])
-        return label
+        label = max(label_2_count.keys(), key=lambda x: np.sum(label_2_count[x]))
+        return label, most_sim_datas
 
 
 class PairSentenceRetriever(object):

@@ -15,18 +15,16 @@ import sys
 import os
 
 from absl import app, flags
+from utils.seed import set_seed
+
+set_seed()
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
-from modeling.dqn import FewShotEnv, train_process, ClassFewShotEnv
 from modeling.classifier import LabelData
 from modeling.mlm_encoder import MlmBertEncoder
 from modeling.retriever_classifier import RetrieverClassifier
 from utils.cls_train import eval_model, dump_result
-
-sys.path.append('../')
-sys.path.append('./')
-
 from utils.data_utils import load_data, load_test_data
 
 flags.DEFINE_string('c', '0', 'index of tnews dataset')
@@ -36,7 +34,7 @@ FLAGS = flags.FLAGS
 def infer(test_data, classifier):
     for d in test_data:
         sentence = d.pop('sentence')
-        label = classifier.classify(sentence)
+        label, _ = classifier.classify(sentence)
         d['label'] = label_2_num[label]
     return test_data
 
@@ -114,14 +112,20 @@ def main(_):
     dev_sentences = [LabelData(text, label) for text, label in dev_data]
 
     # 初始化encoder
-    model_path = 'pretrained_model/roberta'
+    model_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12'
     weight_path = '../temp_tnews.weights'
 
-    prefix = '以下一则关于啊啊的新闻。'
-    mask_ind = [6, 7]
-    encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 16,
-                             merge=MlmBertEncoder.CONCAT)
-    n_top = len(train_data) // 10
+    prefix = '以下是一则关于啊啊的新闻。'
+    mask_ind = [7, 8]
+    n_top = 3
+    encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 8,
+                             merge=MlmBertEncoder.CONCAT, norm=False)
+
+    classifier = RetrieverClassifier(encoder, data, n_top=n_top)
+
+    print('Eval model')
+    rst = eval_model(classifier, [dev_fp], key_sentence, key_label)
+    print(f'{train_fp} + {dev_fp} -> {rst}')
 
     # fine tune
     best_acc = 0
@@ -140,9 +144,8 @@ def main(_):
 
         print(f'{train_fp} + {dev_fp} -> {rst}')
 
-    encoder.load()
-
     # 加载最终模型
+    encoder.load()
     classifier = RetrieverClassifier(encoder, data, n_top=n_top)
 
     # train_py_env = ClassFewShotEnv(classifier.retriever, dev_sentences, code_2_label)

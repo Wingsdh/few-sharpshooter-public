@@ -10,10 +10,11 @@
                    6/14/21: Create
 -------------------------------------------------
 """
+from collections import defaultdict
 from enum import Enum
 import os
 
-from bert4keras.models import build_transformer_model, keras, K, Loss
+from bert4keras.models import build_transformer_model, keras, K, Loss, Embedding
 from bert4keras.optimizers import Adam
 from bert4keras.snippets import DataGenerator, sequence_padding, to_array
 from bert4keras.tokenizers import Tokenizer
@@ -71,8 +72,8 @@ class data_generator(DataGenerator):
 
             if label != 2:  # label是两个字的文本
                 # label_ids: [1093, 689]。 e.g. [101, 1093, 689, 102] =[CLS,农,业,SEP]. tokenizer.encode(label): ([101, 1093, 689, 102], [0, 0, 0, 0])
-                # label_ids = self.tokenizer.encode(self.labels[label])[0][1:-1]
-                label_ids = self.tokenizer.encode(self.labels[label])[0]
+                label_ids = self.tokenizer.encode(self.labels[label])[0][1:-1]
+                # label_ids = self.tokenizer.encode(self.labels[label])[0]
                 if self.flag:
                     self.mask_idxes = [index for index, t_ids in enumerate(token_ids) if t_ids == 7233]
 
@@ -125,9 +126,15 @@ def init_bert(model_path):
     y_in = keras.layers.Input(shape=(None,))
     outputs = CrossEntropy(1)([y_in, model.output])
     train_model = keras.models.Model(model.inputs + [y_in], outputs)
+    for layer in train_model.layers:
+        if layer.name.startswith('Transformer'):
+            layer.trainable = True
+        else:
+            layer.trainable = False
     train_model.compile(optimizer=Adam(1e-5))
+    train_model.summary()
 
-    return model, train_model, tokenizer
+    return model, train_model, train_model, tokenizer
 
 
 class Evaluator(keras.callbacks.Callback):
@@ -177,7 +184,7 @@ class MlmBertEncoder(BaseEncoder):
         self.weight_path = weight_path
         self.train_data = train_data
         self.dev_data = dev_data
-        self.model, self.train_model, self.tokenizer = init_bert(model_path)
+        self.model, self.train_model, self.infer_model, self.tokenizer = init_bert(model_path)
         self.key_tokens = set(''.join(labels.values()))
         self.key_token_index = self.tokenizer.tokens_to_ids(self.key_tokens)
         self.train_generator = data_generator(train_data, batch_size, self.tokenizer, 256, prefix, mask_idxes, labels)
@@ -186,7 +193,7 @@ class MlmBertEncoder(BaseEncoder):
         self.mask_indxes = mask_idxes
         self.merge = merge
         self.max_len = max_len
-        self.pred_char_set = set()
+        self.pred_char_set = defaultdict(int)
         self.flag = True if not mask_idxes else False
         self.norm = norm
 
@@ -195,7 +202,7 @@ class MlmBertEncoder(BaseEncoder):
 
         self.train_model.fit_generator(
             self.train_generator.forfit(),
-            verbose=0,
+            verbose=2,
             steps_per_epoch=len(self.train_generator),
             epochs=n_epoch,
             callbacks=[evaluator]
@@ -205,14 +212,12 @@ class MlmBertEncoder(BaseEncoder):
         self.model.save_weights(self.weight_path)
 
     def load(self):
-        self.pred_char_set = set()
+        self.pred_char_set = defaultdict(int)
         self.model.load_weights(self.weight_path)
 
     def get_prob(self, text, mask_ind_list):
         text = text[:self.max_len - 2]
         token_ids, segment_ids = self.tokenizer.encode(text, maxlen=self.max_len)
-        # token_ids = token_ids[1:-1]
-        # segment_ids = segment_ids[1:-1]
         if self.flag:
             self.mask_indxes = [index for index, t_ids in enumerate(token_ids) if t_ids == 7233]
             mask_ind_list = self.mask_indxes
@@ -228,7 +233,7 @@ class MlmBertEncoder(BaseEncoder):
         for ind in self.mask_indxes:
             token_emb = [emb[ind][key_ind] for key_ind in self.key_token_index]
             i = np.argmax(emb[ind])
-            self.pred_char_set.add(self.tokenizer.id_to_token(i))
+            self.pred_char_set[self.tokenizer.id_to_token(i)] += 1
             matrix.append(token_emb)
 
         if self.merge == self.CONCAT:
