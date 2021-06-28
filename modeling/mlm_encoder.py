@@ -110,7 +110,7 @@ class CrossEntropy(Loss):
         return loss
 
 
-def init_bert(model_path):
+def init_bert(model_path, lr=1e-5):
     dict_path = os.path.join(model_path, 'vocab.txt')
     tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
@@ -131,7 +131,7 @@ def init_bert(model_path):
             layer.trainable = True
         else:
             layer.trainable = False
-    train_model.compile(optimizer=Adam(1e-5))
+    train_model.compile(optimizer=Adam(lr))
 
     return model, train_model, train_model, tokenizer
 
@@ -178,12 +178,13 @@ class MlmBertEncoder(BaseEncoder):
     def __init__(self, model_path, weight_path, train_data, dev_data, prefix, mask_idxes, labels, batch_size,
                  merge=MEAN,
                  max_len=256,
-                 norm=False):
+                 norm=False,
+                 lr=1e-5):
         mask_idxes = [i + 1 for i in mask_idxes]
         self.weight_path = weight_path
         self.train_data = train_data
         self.dev_data = dev_data
-        self.model, self.train_model, self.infer_model, self.tokenizer = init_bert(model_path)
+        self.model, self.train_model, self.infer_model, self.tokenizer = init_bert(model_path, lr=lr)
         self.key_tokens = set(''.join(labels.values()))
         self.key_token_index = self.tokenizer.tokens_to_ids(self.key_tokens)
         self.train_generator = data_generator(train_data, batch_size, self.tokenizer, 256, prefix, mask_idxes, labels)
@@ -221,7 +222,7 @@ class MlmBertEncoder(BaseEncoder):
             self.mask_indxes = [index for index, t_ids in enumerate(token_ids) if t_ids == 7233]
             mask_ind_list = self.mask_indxes
 
-        for mask_ind in mask_ind_list:
+        for mask_ind in self.mask_indxes:
             token_ids[mask_ind] = self.tokenizer._token_mask_id
 
         token_ids, segment_ids = to_array([token_ids], [segment_ids])

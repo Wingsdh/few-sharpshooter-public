@@ -49,12 +49,12 @@ elif [[ $1 == 'cluewsc' ]]; then
   python cluewsc.py -c 4
 
 elif [[ $1 == 'bustm' ]]; then
-  python bustm.py -c few_all
   python bustm.py -c 0
   python bustm.py -c 1
   python bustm.py -c 2
   python bustm.py -c 3
   python bustm.py -c 4
+  python bustm.py -c few_all
 
 elif [[ $1 == 'ocnli' ]]; then
   python ocnli.py -c few_all
