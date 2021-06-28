@@ -119,7 +119,7 @@ def main(_):
     mask_ind = [7, 8]
     n_top = 3
     encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 8,
-                             merge=MlmBertEncoder.CONCAT, norm=False)
+                             merge=MlmBertEncoder.CONCAT, norm=False, lr=1e-4, policy='attention')
 
     classifier = RetrieverClassifier(encoder, data, n_top=n_top)
 
@@ -155,13 +155,6 @@ def main(_):
     # 自测试集测试
     rst = eval_model(classifier, my_test_fp, key_sentence, key_label)
     print(f'{train_fp} + {dev_fp} -> {rst}')
-    # encoder.key_tokens.update(encoder.pred_char_set)
-    # encoder.key_token_index = encoder.tokenizer.tokens_to_ids(encoder.key_tokens)
-    # classifier = RetrieverClassifier(encoder, data, n_top=7)
-    # rst = eval_model(classifier, my_test_fp, key_sentence, key_label)
-    # print(f'{train_fp} + {dev_fp} -> {rst}')
-    # print(encoder.pred_char_set)
-    # print(encoder.pred_char_set - encoder.key_tokens)
 
     # 官方测试集
     test_data = load_test_data(test_fp)

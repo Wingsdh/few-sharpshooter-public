@@ -132,7 +132,9 @@ def main(_):
     mask_ind = []
     encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc,
                              8,
-                             merge=MlmBertEncoder.CONCAT, norm=False)
+                             merge=MlmBertEncoder.CONCAT, norm=False,
+                             lr=1e-4,
+                             policy='attention')
     classifier = RetrieverClassifier(encoder, data, n_top=n_top)
     rst = eval_ocnli_model(classifier, [dev_fp], key_sentence_1, key_sentence_2, key_label)
     print(f'{train_fp} + {dev_fp} -> {rst}')
@@ -154,7 +156,7 @@ def main(_):
             print(f'Save for best {best_acc}')
 
     # 加载最终模型
-    # encoder.load()
+    encoder.load()
 
     classifier = RetrieverClassifier(encoder, data, n_top=n_top)
 

@@ -25,7 +25,7 @@ from absl import flags, app
 from modeling.classifier import LabelData
 from modeling.mlm_encoder import MlmBertEncoder
 from modeling.retriever_classifier import RetrieverClassifier
-from utils.cls_train import eval_model, dump_result
+from utils.cls_train import dump_result
 
 flags.DEFINE_string('c', '0', 'index of dataset')
 FLAGS = flags.FLAGS
@@ -39,9 +39,29 @@ def load_csl_keyword(fp, key_sentence, key_label, keyword):
     with open(fp, 'r', encoding='utf-8') as fd:
         for l in fd:
             d = json.loads(l.strip())
-            data.append(d)
-        list_keyword = ['，'.join(da[keyword]) for da in data]
-        data = [(str_keyword + '概括' + d[key_sentence], d[key_label]) for d, str_keyword in zip(data, list_keyword)]
+            keywords = d[keyword]
+            for kw in keywords:
+                data.append((kw + '概括以下文章，' + d[key_sentence], d[key_label]))
+
+        # list_keyword = ['，'.join(da[keyword]) for da in data]
+        # data = [(str_keyword + '概括' + d[key_sentence], d[key_label]) for d, str_keyword in zip(data, list_keyword)]
+        print(f'Loaded {len(data)} data from {fp}')
+    return data
+
+
+def load_csl_eval_keyword(fp, key_sentence, key_label, keyword):
+    data = []
+    with open(fp, 'r', encoding='utf-8') as fd:
+        for l in fd:
+            d = json.loads(l.strip())
+            keywords = d[keyword]
+            each_data = []
+            for kw in keywords:
+                each_data.append((kw + '概括以下文章，' + d[key_sentence], d[key_label]))
+            data.append(each_data)
+
+        # list_keyword = ['，'.join(da[keyword]) for da in data]
+        # data = [(str_keyword + '概括' + d[key_sentence], d[key_label]) for d, str_keyword in zip(data, list_keyword)]
         print(f'Loaded {len(data)} data from {fp}')
     return data
 
@@ -50,11 +70,18 @@ def eval_model_csl(classifier, test_fps, key_sentence, key_label, key_word, need
     cnt = 0
     test_data = []
     for fp in test_fps:
-        each_data = load_csl_keyword(fp, key_sentence, key_label, key_word)
+        each_data = load_csl_eval_keyword(fp, key_sentence, key_label, key_word)
         test_data.extend(each_data)
 
-    for sentence, label in tqdm(test_data):
-        pred_label = classifier.classify(sentence)
+    for each_data in tqdm(test_data):
+        for sentence, label in each_data:
+            pred_label, _ = classifier.classify(sentence)
+            if pred_label == '0':
+                pred_label = '0'
+                break
+        else:
+            pred_label = '1'
+
         if label == pred_label:
             cnt += 1
         elif need_print:
@@ -73,16 +100,21 @@ def infer(test_fp, classifier, key_sentence, key_label, keyword):
             data.append(d)
 
     for d in data:
-        kw = d.pop(keyword)
+        keywords = d.pop(keyword)
         sent = d.pop(key_sentence)
-        str_keyword = '，'.join(kw)
-        text = str_keyword + '概括' + sent
-        label = classifier.classify(text)
-        d[key_label] = label
+        for kw in keywords:
+            sentence = kw + '概括以下文章，' + sent
+            label, _ = classifier.classify(sentence)
+            if label == '0':
+                d[key_label] = '0'
+                break
+        else:
+            d[key_label] = '1'
+
     return data
 
 
-label_2_desc = {"0": "不能", "1": "可以"}
+label_2_desc = {"0": "绝对不能", "1": "完全可以"}
 
 
 def get_data_fp(use_index):
@@ -105,28 +137,29 @@ def main(_):
     key_sentence = 'abst'
     key_word = 'keyword'
     train_data = load_csl_keyword(train_fp, key_sentence, key_label, key_word)
-    dev_data = load_csl_keyword(dev_fp, key_sentence, key_label, key_word)
+    dev_data = load_csl_eval_keyword(dev_fp, key_sentence, key_label, key_word)
 
     # 初始化encoder
     model_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12'
     weight_path = '../temp_csl.weights'
-    prefix = '黴鹹用'
-    mask_ind = [0, 1]
+    prefix = '锟锟锟锟用'
+    mask_ind = [0, 1, 2, 3]
 
-    encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 8)
+    encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 8,
+                             merge=MlmBertEncoder.CONCAT, norm=False, lr=1e-4, policy='attention')
 
     # fine tune
     best_acc = 0
     data = [LabelData(text, label) for text, label in train_data]
-    n_top = len(train_data) // 10
-    for epoch in range(20):
+    n_top = 5
+    for epoch in range(10):
         print(f'Training epoch {epoch}')
         encoder.train(1)
         # 加载分类器
         classifier = RetrieverClassifier(encoder, data, n_top=n_top)
 
         print('Evel model')
-        rst = eval_model(classifier, [dev_fp], key_sentence, key_label)  # rst=预测的准确率
+        rst = eval_model_csl(classifier, [dev_fp], key_sentence, key_label, key_word)  # rst=预测的准确率
         if rst > best_acc:
             encoder.save()
             best_acc = rst

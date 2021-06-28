@@ -16,6 +16,7 @@ import os
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 from utils.seed import set_seed
+
 set_seed()
 
 from modeling.classifier import LabelData
@@ -298,13 +299,14 @@ def main(_):
     dev_data = load_data(dev_fp, key_sentence, key_label)
 
     # 初始化encoder
-    n_top = 11
+    n_top = 5
     model_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12'
     weight_path = f'../temp_iflytek_{FLAGS.c}.weights'
     prefix = '以下是一款游戏软件，'
     mask_ind = [5, 6]
     encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 8,
-                             merge=MlmBertEncoder.CONCAT, norm=False)
+                             merge=MlmBertEncoder.CONCAT, norm=False, lr=1e-4, policy='attention')
+
     classifier = RetrieverClassifier(encoder, data, n_top=n_top)
 
     print('Evel model')

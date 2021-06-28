@@ -32,7 +32,7 @@ def eval_wsc_model(classifier, test_fps, key_sentence, key_label, need_print=Fal
         test_data.extend(each_data)
 
     for sentence, label in tqdm(test_data):
-        pred_label = classifier.classify(sentence)
+        pred_label, _ = classifier.classify(sentence)
         if label == pred_label:
             cnt += 1
         elif need_print:
@@ -55,11 +55,8 @@ def load_wsc_data(fp, key_sentence, key_label):
             span2_index = target['span2_index']
             span2_text = target['span2_text']
             text = value[key_sentence]
-            text_list = [x for x in text]
-            text_list.insert(span1_index + len(span1_text), "（这是实体）")
-            text_list.insert(span2_index + len(span2_text), "（这是代词）")
-            text_new = "".join(text_list)
-            data.append((text_new, labels))
+            text += f'其中，{span2_text}锟锟锟是{span1_text}'
+            data.append((text, labels))
         return data
 
 
@@ -77,16 +74,13 @@ def infer(test_fp, classifier):
         span2_index = target.pop('span2_index')
         span2_text = target.pop('span2_text')
         text = value.pop('text')
-        text_list = [x for x in text]
-        text_list.insert(span1_index + len(span1_text), "（这是实体）")
-        text_list.insert(span2_index + len(span2_text), "（这是代词）")
-        text_new = "".join(text_list)
-        label = classifier.classify(text_new)
+        text += f'其中，{span2_text}锟锟锟是{span1_text}'
+        label, _ = classifier.classify(text)
         value['label'] = label
     return data
 
 
-label_2_desc = {'true': '正确', 'false': '错误'}
+label_2_desc = {'true': '确实就', 'false': '不可能'}
 
 
 def get_data_fp(use_index):
@@ -107,20 +101,22 @@ def main(_):
     key_sentence = 'text'
     train_data = load_wsc_data(train_fp, key_sentence, key_label)
     dev_data = load_wsc_data(dev_fp, key_sentence, key_label)
+    data = [LabelData(text, label) for text, label in train_data]
 
     # 初始化encoder
+    n_top = len(train_data) // 10
     model_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12'
-    weight_path = '../temp_cluewsc.weights'
-
-    prefix = '下面句子的指代关系正确吗？啊啊。'
-    mask_ind = [13, 14]
-    encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 16,
-                             merge=MlmBertEncoder.MEAN)
+    weight_path = f'../temp_cluewsc_{FLAGS.c}.weights'
+    prefix = ''
+    mask_ind = []
+    encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 8,
+                             merge=MlmBertEncoder.CONCAT, norm=False, lr=1e-4, policy='attention')
+    classifier = RetrieverClassifier(encoder, data, n_top=n_top)
+    rst = eval_wsc_model(classifier, [dev_fp], key_sentence, key_label)
+    print(f'{train_fp} + {dev_fp} -> {rst}')
 
     # fine tune
-    data = [LabelData(text, label) for text, label in train_data]
     best_acc = 0
-    n_top = len(train_data) // 5
     for epoch in range(10):
         print(f'Training epoch {epoch}')
         encoder.train(1)

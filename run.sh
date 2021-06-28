@@ -33,12 +33,12 @@ elif [[ $1 == 'iflytek' ]]; then
   python iflytek.py -c few_all
 
 elif [[ $1 == 'csl' ]]; then
-  python csl.py -c few_all
   python csl.py -c 0
   python csl.py -c 1
   python csl.py -c 2
   python csl.py -c 3
   python csl.py -c 4
+  python csl.py -c few_all
 
 elif [[ $1 == 'cluewsc' ]]; then
   python cluewsc.py -c few_all
@@ -63,6 +63,9 @@ elif [[ $1 == 'ocnli' ]]; then
   python ocnli.py -c 2
   python ocnli.py -c 3
   python ocnli.py -c 4
+
+elif [[ $1 == 'chid' ]]; then
+  python chid.py
 
 else
   echo 'unknown argment 1'
