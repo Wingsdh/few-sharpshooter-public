@@ -76,7 +76,7 @@ def main(_):
     prefix = '对以下产品感到十分锟锟，'
     mask_ind = [9, 10]
     encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 8,
-                             merge=MlmBertEncoder.CONCAT, norm=False)
+                             merge=MlmBertEncoder.CONCAT, norm=False, lr=1e-4, policy='attention')
     classifier = RetrieverClassifier(encoder, data, n_top=n_top)
     rst = eval_model(classifier, [dev_fp], key_sentence, key_label)
     print(f'{train_fp} + {dev_fp} -> {rst}')
@@ -92,7 +92,7 @@ def main(_):
         print('Eval model')
         rst = eval_model(classifier, [dev_fp], key_sentence, key_label)
         print(f'{train_fp} + {dev_fp} -> {rst}')
-        if rst > best_acc:
+        if rst >= best_acc and epoch > 5:
             encoder.save()
             best_acc = rst
             print(f'Save for best {best_acc}')

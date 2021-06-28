@@ -129,13 +129,13 @@ def main(_):
     data = [LabelData(text, label) for text, label in train_data]
 
     # 初始化encoder
-    n_top = 11
+    n_top = len(data) // 10
     model_path = '../chinese_roberta_wwm_ext_L-12_H-768_A-12'
     weight_path = f'../temp_csldcp_{FLAGS.c}.weights'
     prefix = '以下是一篇锟锟论文，'
     mask_ind = [5, 6]
     encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc, 8,
-                             merge=MlmBertEncoder.CONCAT, norm=False)
+                             merge=MlmBertEncoder.CONCAT, norm=False, lr=1e-4, policy='attention')
     classifier = RetrieverClassifier(encoder, data, n_top=n_top)
     rst = eval_model(classifier, [dev_fp], key_sentence, key_label)
     print(f'{train_fp} + {dev_fp} -> {rst}')

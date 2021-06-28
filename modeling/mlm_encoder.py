@@ -110,7 +110,7 @@ class CrossEntropy(Loss):
         return loss
 
 
-def init_bert(model_path, lr=1e-5):
+def init_bert(model_path, lr=1e-5, policy='transformer'):
     dict_path = os.path.join(model_path, 'vocab.txt')
     tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
@@ -127,8 +127,13 @@ def init_bert(model_path, lr=1e-5):
     outputs = CrossEntropy(1)([y_in, model.output])
     train_model = keras.models.Model(model.inputs + [y_in], outputs)
     for layer in train_model.layers:
-        if layer.name.startswith('Transformer'):
+        # if layer.name.startswith('Transformer-11-Mult'):
+        if policy == 'transformer' and layer.name.startswith('Transformer'):
             layer.trainable = True
+
+        elif policy == 'attention' and 'MultiHeadSelfAttention' in layer.name:
+            layer.trainable = True
+
         else:
             layer.trainable = False
     train_model.compile(optimizer=Adam(lr))
@@ -179,12 +184,13 @@ class MlmBertEncoder(BaseEncoder):
                  merge=MEAN,
                  max_len=256,
                  norm=False,
-                 lr=1e-5):
+                 lr=1e-5,
+                 policy='transformer'):
         mask_idxes = [i + 1 for i in mask_idxes]
         self.weight_path = weight_path
         self.train_data = train_data
         self.dev_data = dev_data
-        self.model, self.train_model, self.infer_model, self.tokenizer = init_bert(model_path, lr=lr)
+        self.model, self.train_model, self.infer_model, self.tokenizer = init_bert(model_path, lr=lr, policy=policy)
         self.key_tokens = set(''.join(labels.values()))
         self.key_token_index = self.tokenizer.tokens_to_ids(self.key_tokens)
         self.train_generator = data_generator(train_data, batch_size, self.tokenizer, 256, prefix, mask_idxes, labels)

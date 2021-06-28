@@ -24,14 +24,14 @@ from absl import app, flags
 sys.path.append('../')
 sys.path.append('./')
 
-label_2_desc = {'0': '那就不能', '1': '也就是说'}
+label_2_desc = {'0': '而不是', '1': '换句话'}
 flags.DEFINE_string('c', '0', 'index of dataset')
 FLAGS = flags.FLAGS
 set_seed()
 
 
 def build_sentence(sent1, sent2):
-    return sent1 + "，锟锟锟锟，" + sent2
+    return sent1 + "，锟锟锟说，" + sent2
 
 
 def load_bustm_data(fp, key_sentence_1, key_sentence_2, key_label):
@@ -108,7 +108,8 @@ def main(_):
     encoder = MlmBertEncoder(model_path, weight_path, train_data, dev_data, prefix, mask_ind, label_2_desc,
                              8,
                              merge=MlmBertEncoder.CONCAT, norm=False,
-                             lr=1e-6)
+                             lr=1e-4,
+                             policy='attention')
     classifier = RetrieverClassifier(encoder, data, n_top=n_top)
     rst = eval_bustm_model(classifier, [dev_fp], key_sentence_1, key_sentence_2, key_label)
     print(f'{train_fp} + {dev_fp} -> {rst}')
